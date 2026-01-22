@@ -96,9 +96,20 @@ function validateCsrf(req, res, next) {
     next();
 }
 
+// Validate required environment variables
+const validateEmailConfig = () => {
+    const required = ['EMAIL_USER', 'EMAIL_PASSWORD', 'COMPANY_EMAIL'];
+    const missing = required.filter(key => !process.env[key]);
+    if (missing.length > 0) {
+        console.error(`Missing required environment variables: ${missing.join(', ')}`);
+        return false;
+    }
+    return true;
+};
+
 // Email transporter configuration
 const createTransporter = () => {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
         service: process.env.EMAIL_SERVICE || 'gmail',
         auth: {
             user: process.env.EMAIL_USER,
@@ -107,9 +118,35 @@ const createTransporter = () => {
     });
 };
 
+// Verify transporter on startup
+let emailConfigValid = false;
+if (validateEmailConfig()) {
+    const transporter = createTransporter();
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('Email configuration error:', error.message);
+            emailConfigValid = false;
+        } else {
+            console.log('Email server is ready to send messages');
+            emailConfigValid = true;
+        }
+    });
+} else {
+    console.warn('Email functionality disabled due to missing configuration');
+}
+
 // Contact form endpoint
 app.post('/api/contact', contactLimiter, validateCsrf, async (req, res) => {
     try {
+        // Check if email is configured
+        if (!emailConfigValid) {
+            console.error('Email not configured - cannot process contact form');
+            return res.status(503).json({
+                success: false,
+                message: 'Email service is temporarily unavailable. Please try again later.'
+            });
+        }
+
         const { name, email, phone, company, service, message } = req.body;
 
         // Validation

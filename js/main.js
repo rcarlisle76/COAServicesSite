@@ -7,11 +7,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (hamburger) {
         hamburger.addEventListener('click', function() {
-            navLinks.classList.toggle('active');
+            const isExpanded = navLinks.classList.toggle('active');
+
+            // Update aria-expanded attribute for accessibility
+            hamburger.setAttribute('aria-expanded', isExpanded);
 
             // Animate hamburger icon
             const spans = hamburger.querySelectorAll('span');
-            if (navLinks.classList.contains('active')) {
+            if (isExpanded) {
                 spans[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
                 spans[1].style.opacity = '0';
                 spans[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
@@ -27,11 +30,25 @@ document.addEventListener('DOMContentLoaded', function() {
         navItems.forEach(item => {
             item.addEventListener('click', function() {
                 navLinks.classList.remove('active');
+                hamburger.setAttribute('aria-expanded', 'false');
                 const spans = hamburger.querySelectorAll('span');
                 spans[0].style.transform = 'none';
                 spans[1].style.opacity = '1';
                 spans[2].style.transform = 'none';
             });
+        });
+
+        // Close menu when pressing Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && navLinks.classList.contains('active')) {
+                navLinks.classList.remove('active');
+                hamburger.setAttribute('aria-expanded', 'false');
+                hamburger.focus();
+                const spans = hamburger.querySelectorAll('span');
+                spans[0].style.transform = 'none';
+                spans[1].style.opacity = '1';
+                spans[2].style.transform = 'none';
+            }
         });
     }
 });

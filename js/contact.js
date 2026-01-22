@@ -1,5 +1,5 @@
 // ========================================
-// Contact Form Handler
+// Contact Form Handler with CSRF Protection
 // ========================================
 document.addEventListener('DOMContentLoaded', function() {
     const contactForm = document.getElementById('contactForm');
@@ -26,11 +26,19 @@ document.addEventListener('DOMContentLoaded', function() {
             submitButton.textContent = 'Sending...';
 
             try {
-                // Send form data to server
+                // First, fetch CSRF token
+                const csrfResponse = await fetch('/api/csrf-token');
+                if (!csrfResponse.ok) {
+                    throw new Error('Failed to get security token');
+                }
+                const { csrfToken } = await csrfResponse.json();
+
+                // Send form data to server with CSRF token
                 const response = await fetch('/api/contact', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
                     },
                     body: JSON.stringify(formData)
                 });

@@ -1,0 +1,12 @@
+# Robots.txt for COA Services
+# https://coaservices.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://coaservices.com/sitemap.xml
+
+# Disallow server directory
+Disallow: /server/
+Disallow: /api/

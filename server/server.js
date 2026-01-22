@@ -1,15 +1,53 @@
 const express = require('express');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
+const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// CSRF token store (in production, use Redis or similar)
+const csrfTokens = new Map();
+
+// HTML sanitization function to prevent XSS
+function sanitizeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+}
+
+// Security middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:"],
+        },
+    },
+}));
+
+// CORS configuration - restrict to same origin in production
+const corsOptions = {
+    origin: process.env.NODE_ENV === 'production'
+        ? process.env.ALLOWED_ORIGIN || false
+        : true,
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+    credentials: true
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -20,8 +58,43 @@ app.use(express.static(path.join(__dirname, '..')));
 const contactLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 5, // limit each IP to 5 requests per windowMs
-    message: 'Too many contact requests from this IP, please try again later.'
+    message: { success: false, message: 'Too many contact requests from this IP, please try again later.' }
 });
+
+// CSRF token endpoint
+app.get('/api/csrf-token', (req, res) => {
+    const token = crypto.randomBytes(32).toString('hex');
+    const clientId = req.ip + '-' + Date.now();
+    csrfTokens.set(token, { clientId, expires: Date.now() + 3600000 }); // 1 hour expiry
+
+    // Clean up expired tokens
+    for (const [key, value] of csrfTokens.entries()) {
+        if (value.expires < Date.now()) {
+            csrfTokens.delete(key);
+        }
+    }
+
+    res.json({ csrfToken: token });
+});
+
+// CSRF validation middleware
+function validateCsrf(req, res, next) {
+    const token = req.headers['x-csrf-token'];
+
+    if (!token || !csrfTokens.has(token)) {
+        return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token' });
+    }
+
+    const tokenData = csrfTokens.get(token);
+    if (tokenData.expires < Date.now()) {
+        csrfTokens.delete(token);
+        return res.status(403).json({ success: false, message: 'CSRF token expired' });
+    }
+
+    // Delete token after use (one-time use)
+    csrfTokens.delete(token);
+    next();
+}
 
 // Email transporter configuration
 const createTransporter = () => {
@@ -35,7 +108,7 @@ const createTransporter = () => {
 };
 
 // Contact form endpoint
-app.post('/api/contact', contactLimiter, async (req, res) => {
+app.post('/api/contact', contactLimiter, validateCsrf, async (req, res) => {
     try {
         const { name, email, phone, company, service, message } = req.body;
 
@@ -56,6 +129,16 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
             });
         }
 
+        // Sanitize all inputs to prevent XSS
+        const sanitizedData = {
+            name: sanitizeHtml(name),
+            email: sanitizeHtml(email),
+            phone: sanitizeHtml(phone),
+            company: sanitizeHtml(company),
+            service: sanitizeHtml(service),
+            message: sanitizeHtml(message)
+        };
+
         // Create email transporter
         const transporter = createTransporter();
 
@@ -63,20 +146,20 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
         const companyMailOptions = {
             from: process.env.EMAIL_USER,
             to: process.env.COMPANY_EMAIL,
-            subject: `New Contact Form Submission from ${name}`,
+            subject: `New Contact Form Submission from ${sanitizedData.name}`,
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #2563eb;">New Contact Form Submission</h2>
                     <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <p><strong>Name:</strong> ${name}</p>
-                        <p><strong>Email:</strong> ${email}</p>
-                        ${phone ? `<p><strong>Phone:</strong> ${phone}</p>` : ''}
-                        ${company ? `<p><strong>Company:</strong> ${company}</p>` : ''}
-                        ${service ? `<p><strong>Service Interested In:</strong> ${service}</p>` : ''}
+                        <p><strong>Name:</strong> ${sanitizedData.name}</p>
+                        <p><strong>Email:</strong> ${sanitizedData.email}</p>
+                        ${sanitizedData.phone ? `<p><strong>Phone:</strong> ${sanitizedData.phone}</p>` : ''}
+                        ${sanitizedData.company ? `<p><strong>Company:</strong> ${sanitizedData.company}</p>` : ''}
+                        ${sanitizedData.service ? `<p><strong>Service Interested In:</strong> ${sanitizedData.service}</p>` : ''}
                     </div>
                     <div style="margin: 20px 0;">
                         <h3 style="color: #2563eb;">Message:</h3>
-                        <p style="background-color: #f9fafb; padding: 15px; border-radius: 8px; white-space: pre-wrap;">${message}</p>
+                        <p style="background-color: #f9fafb; padding: 15px; border-radius: 8px; white-space: pre-wrap;">${sanitizedData.message}</p>
                     </div>
                     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
                     <p style="color: #6b7280; font-size: 12px;">
@@ -89,17 +172,17 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
         // Auto-reply to customer
         const customerMailOptions = {
             from: process.env.EMAIL_USER,
-            to: email,
+            to: email, // Use original email for sending
             subject: 'Thank you for contacting COA Services',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #2563eb;">Thank You for Contacting Us!</h2>
-                    <p>Dear ${name},</p>
+                    <p>Dear ${sanitizedData.name},</p>
                     <p>Thank you for reaching out to COA Services. We have received your message and will get back to you as soon as possible, typically within 1 business day.</p>
 
                     <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
                         <h3 style="color: #2563eb; margin-top: 0;">Your Message:</h3>
-                        <p style="white-space: pre-wrap;">${message}</p>
+                        <p style="white-space: pre-wrap;">${sanitizedData.message}</p>
                     </div>
 
                     <p>If you have any urgent concerns, please don't hesitate to call us during business hours.</p>
@@ -153,6 +236,11 @@ app.get('/about', (req, res) => {
 
 app.get('/contact', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'contact.html'));
+});
+
+// 404 handler - must be after all other routes
+app.use((req, res) => {
+    res.status(404).sendFile(path.join(__dirname, '..', '404.html'));
 });
 
 // Start server

@@ -5,11 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Comprehensive IT services including website development, Salesforce consulting, IT support, and custom business solutions">
     <title>Our Services - COA Services</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Our Services - COA Services">
+    <meta property="og:description" content="Comprehensive IT services including website development, Salesforce consulting, IT support, and custom business solutions">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://coaservices.com/services">
+    <meta property="og:image" content="https://coaservices.com/og-image.png">
+    <meta property="og:site_name" content="COA Services">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Our Services - COA Services">
+    <meta name="twitter:description" content="Comprehensive IT services for small businesses">
+    <meta name="twitter:image" content="https://coaservices.com/og-image.png">
+
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <header>
-        <nav class="navbar">
+        <nav class="navbar" aria-label="Main navigation">
             <div class="container">
                 <div class="logo">
                     <h1>COA Services</h1>
@@ -17,20 +39,20 @@
                 </div>
                 <ul class="nav-links">
                     <li><a href="index.html">Home</a></li>
-                    <li><a href="services.html" class="active">Services</a></li>
+                    <li><a href="services.html" class="active" aria-current="page">Services</a></li>
                     <li><a href="about.html">About</a></li>
                     <li><a href="contact.html">Contact</a></li>
                 </ul>
-                <div class="hamburger">
+                <button class="hamburger" aria-label="Toggle navigation menu" aria-expanded="false">
                     <span></span>
                     <span></span>
                     <span></span>
-                </div>
+                </button>
             </div>
         </nav>
     </header>
 
-    <main>
+    <main id="main-content">
         <!-- Page Header -->
         <section class="page-header">
             <div class="container">
@@ -40,12 +62,13 @@
         </section>
 
         <!-- Services Details -->
-        <section class="services-detail">
+        <section class="services-detail" aria-labelledby="services-detail-heading">
+            <h2 id="services-detail-heading" class="visually-hidden">Detailed Service Offerings</h2>
             <div class="container">
 
                 <!-- Website Development -->
                 <div class="service-detail-card">
-                    <div class="service-detail-icon">🌐</div>
+                    <div class="service-detail-icon" role="img" aria-label="Globe icon representing website development">🌐</div>
                     <div class="service-detail-content">
                         <h2>Website Development</h2>
                         <p>Your website is often the first impression customers have of your business. We create professional, responsive websites that help you stand out and convert visitors into customers.</p>
@@ -63,7 +86,7 @@
 
                 <!-- Salesforce Consulting -->
                 <div class="service-detail-card">
-                    <div class="service-detail-icon">☁️</div>
+                    <div class="service-detail-icon" role="img" aria-label="Cloud icon representing Salesforce consulting">☁️</div>
                     <div class="service-detail-content">
                         <h2>Salesforce Consulting</h2>
                         <p>Maximize your investment in Salesforce with expert consulting services. We help you implement, customize, and optimize Salesforce to match your unique business processes.</p>
@@ -81,7 +104,7 @@
 
                 <!-- IT Support -->
                 <div class="service-detail-card">
-                    <div class="service-detail-icon">🔧</div>
+                    <div class="service-detail-icon" role="img" aria-label="Wrench icon representing IT support">🔧</div>
                     <div class="service-detail-content">
                         <h2>IT Support & Maintenance</h2>
                         <p>Keep your business running smoothly with reliable IT support. We provide proactive maintenance and responsive technical assistance to minimize downtime and maximize productivity.</p>
@@ -99,7 +122,7 @@
 
                 <!-- Business Solutions -->
                 <div class="service-detail-card">
-                    <div class="service-detail-icon">💼</div>
+                    <div class="service-detail-icon" role="img" aria-label="Briefcase icon representing business solutions">💼</div>
                     <div class="service-detail-content">
                         <h2>Custom Business Solutions</h2>
                         <p>Every business is unique. We work with you to understand your challenges and develop tailored technology solutions that help you work smarter and grow faster.</p>
